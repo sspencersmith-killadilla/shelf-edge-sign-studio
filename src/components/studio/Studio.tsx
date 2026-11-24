@@ -8,7 +8,8 @@ import { DEFAULT_CONFIG } from "@/lib/signage/presets";
 import { FONTS, ensureFont } from "@/lib/signage/fonts";
 import { CSS_PX_PER_IN, exportPixelRatio, fmtSize, type Unit } from "@/lib/signage/size";
 import { loadBrand, loadSaved, persistSaved } from "@/lib/signage/storage";
-import { Undo2, Redo2, Languages, X } from "lucide-react";
+import { Undo2, Redo2, Languages, X, BookOpen } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { LANGS, LangContext, translate, type Lang } from "@/lib/signage/i18n";
 import { SignRenderer } from "./SignRenderer";
 import { runPreflight, type Issue } from "@/lib/signage/preflight";
@@ -201,6 +202,7 @@ export function Studio() {
           </div>
           <span className="w-12 text-xs tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
           <label className="flex items-center gap-2 text-xs font-medium"><Switch checked={guides} onCheckedChange={setGuides} /> <ScanLine className="size-3.5" /> {t("Guides")}</label>
+          <Button asChild variant="ghost" size="sm"><Link to="/manual"><BookOpen /> Manual</Link></Button>
           <label className="flex items-center gap-1 text-xs"><Languages className="size-3.5" /><select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="rounded border border-border bg-card px-1 py-0.5">{LANGS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}</select></label>
           <div className="ml-auto flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => void check()}><ClipboardCheck /> <span className="hidden lg:inline">Preflight</span></Button>
