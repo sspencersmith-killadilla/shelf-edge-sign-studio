@@ -30,6 +30,8 @@
  */
 
 @theme inline {
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -74,25 +76,29 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --background: oklch(0.985 0.003 250);
+  --foreground: oklch(0.22 0.025 255);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.22 0.025 255);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.22 0.025 255);
+  --primary: oklch(0.47 0.15 252);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.008 250);
+  --secondary-foreground: oklch(0.25 0.03 255);
+  --muted: oklch(0.955 0.008 250);
+  --muted-foreground: oklch(0.52 0.025 255);
+  --accent: oklch(0.95 0.025 250);
+  --accent-foreground: oklch(0.3 0.08 252);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --border: oklch(0.9 0.012 255);
+  --input: oklch(0.9 0.012 255);
+  --ring: oklch(0.6 0.13 252);
+  --canvas: oklch(0.86 0.006 255);
+  --canvas-dot: oklch(0.8 0.008 255);
+  --guide-safe: oklch(0.65 0.2 145);
+  --guide-bleed: oklch(0.62 0.22 25);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -152,4 +158,23 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+@layer base { body { font-family: var(--font-sans); } }
+
+.canvas-backdrop {
+  background-color: var(--canvas);
+  background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.shadow-sign { box-shadow: 0 30px 80px -20px oklch(0.2 0.03 255 / 0.45), 0 0 0 1px oklch(0.2 0.03 255 / 0.08); }
+.guide-safe { border-style: dashed; border-color: var(--guide-safe); }
+.guide-bleed { border-style: solid; border-color: var(--guide-bleed); }
+.print-only { display: none; }
+
+@media print {
+  html, body { margin: 0; padding: 0; background: none; }
+  .no-print, [data-sonner-toaster] { display: none !important; }
+  .print-only { display: block; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

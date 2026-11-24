@@ -28,3 +28,7 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+- Signage studio is 100% client-side: sign state lives in React, saved signs in localStorage (`src/lib/signage/storage.ts`); no backend.
+- Signs render in CSS inches (96px/in) via `SignRenderer`; exports scale with `exportPixelRatio` for 300 DPI so preview and output match.
