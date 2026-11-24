@@ -20,6 +20,8 @@ export const COLLECTIONS: Collection[] = [
   { id: "kids", name: "Kids Books", title: "PICTURE BOOKS", range: "E A – M", sub: "Easy readers & picture books", icon: "Star", palette: { primary: "#14915B", accent: "#FFD23F", text: "#0D3B27", background: "#F3FBF5" }, template: "playful", headingFont: "Fredoka", bodyFont: "Fredoka" },
   { id: "genealogy", name: "Genealogy", title: "GENEALOGY", range: "GEN 929.1 – 976.4", sub: "Family histories\nCounty records • Cemetery indexes", icon: "TreePine", palette: { primary: "#6E1F2E", accent: "#B8955A", text: "#3D1219", background: "#F6EEDC" }, template: "editorial", headingFont: "Playfair Display", bodyFont: "Lora" },
   { id: "holds", name: "Holds", title: "HOLDS", range: "HOLDS A – Z", sub: "Shelved by patron last name", icon: "Clock", palette: { primary: "#2B2F33", accent: "#0A5EB0", text: "#1C1F22", background: "#FFFFFF" }, template: "civic", headingFont: "Inter", bodyFont: "Inter" },
+  { id: "lc-academic", name: "LC: Science (Q)", title: "SCIENCE", range: "Q – QR", sub: "QA Mathematics\nQC Physics\nQD Chemistry\nQH Natural History", icon: "Search", palette: { primary: "#23395B", accent: "#4BA3C3", text: "#1A2A44", background: "#F6F9FC" }, template: "wayfinding", headingFont: "Space Grotesk", bodyFont: "Inter" },
+  { id: "lc-history", name: "LC: History (D–F)", title: "HISTORY", range: "D – F", sub: "D World History\nE–F History of the Americas", icon: "Landmark", palette: { primary: "#4A3B2A", accent: "#C08A3E", text: "#2E241A", background: "#FAF6EF" }, template: "editorial", headingFont: "Merriweather", bodyFont: "Lora" },
 ];
 
 export function getCollection(id: CollectionId) { return COLLECTIONS.find((c) => c.id === id) ?? COLLECTIONS[0]!; }

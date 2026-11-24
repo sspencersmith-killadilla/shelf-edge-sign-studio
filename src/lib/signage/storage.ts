@@ -19,3 +19,8 @@ export function parseImport(text: string): SavedSign[] {
     return { id: typeof s.id === "string" ? s.id : `imp-${Date.now()}-${i}`, name: s.name, savedAt: typeof s.savedAt === "number" ? s.savedAt : Date.now(), config: { ...DEFAULT_CONFIG, ...s.config } };
   });
 }
+
+const BRAND_KEY = "signage-studio:brand";
+export interface Brand { header: string; footer: string }
+export function loadBrand(): Brand | null { try { const b = JSON.parse(localStorage.getItem(BRAND_KEY) ?? "null"); return b && typeof b.header === "string" ? b : null; } catch { return null; } }
+export function persistBrand(b: Brand) { localStorage.setItem(BRAND_KEY, JSON.stringify(b)); }

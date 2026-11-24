@@ -25,3 +25,26 @@ describe("JSON import", () => {
     expect(s?.config.width).toBe(12);
   });
 });
+
+import { contrastRatio, passesAA } from "./contrast";
+import { signsFromCsv } from "./csv";
+import { DEFAULT_CONFIG } from "./presets";
+import { fromUnit, toUnit } from "./size";
+
+describe("accessibility contrast", () => {
+  it("black on white is 21:1", () => expect(contrastRatio("#000000", "#FFFFFF")).toBe(21));
+  it("light gray on white fails AA", () => expect(passesAA("#BBBBBB", "#FFFFFF")).toBe(false));
+});
+describe("units", () => {
+  it("12 in is 30.5 cm", () => expect(toUnit(12, "cm")).toBe(30.5));
+  it("2.54 cm is 1 in", () => expect(fromUnit(2.54, "cm")).toBe(1));
+});
+describe("CSV batch import", () => {
+  it("makes one sign per row and skips rows without a range", () => {
+    const r = signsFromCsv('title,range,sub-ranges,aisle\nFICTION,FIC A – C,"Mystery | Romance",AISLE 1\nFICTION,,x,AISLE 2\n', DEFAULT_CONFIG);
+    expect(r.signs.length).toBe(1); expect(r.skipped).toBe(1);
+    expect(r.signs[0]!.config.subRanges).toBe("Mystery\nRomance");
+    expect(r.signs[0]!.config.aisle).toBe("AISLE 1");
+  });
+  it("rejects CSV without a range column", () => expect(() => signsFromCsv("title\nX", DEFAULT_CONFIG)).toThrow());
+});

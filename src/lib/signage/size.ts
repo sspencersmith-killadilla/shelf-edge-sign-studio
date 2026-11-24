@@ -10,6 +10,10 @@ export const SIZE_PRESETS = [
   { id: "end-panel", label: 'Standard End-Panel (12" × 18")', w: 12, h: 18 },
   { id: "narrow", label: 'Narrow End-Panel (6" × 18")', w: 6, h: 18 },
   { id: "poster", label: 'Large Poster (18" × 24")', w: 18, h: 24 },
+  { id: "a4", label: "A4 (210 × 297 mm)", w: 8.27, h: 11.69 },
+  { id: "a3", label: "A3 (297 × 420 mm)", w: 11.69, h: 16.54 },
+  { id: "a2", label: "A2 (420 × 594 mm)", w: 16.54, h: 23.39 },
+  { id: "a1", label: "A1 (594 × 841 mm)", w: 23.39, h: 33.11 },
   { id: "custom", label: "Custom size", w: 0, h: 0 },
 ] as const;
 
@@ -31,3 +35,9 @@ export function exportPixelRatio(wIn: number, hIn: number) {
   const ratio = Math.min(ideal, cap);
   return { ratio, capped: ratio < ideal, dpi: Math.round(ratio * CSS_PX_PER_IN) };
 }
+
+export type Unit = "in" | "cm";
+export const CM_PER_IN = 2.54;
+export const toUnit = (inches: number, u: Unit) => u === "cm" ? Math.round(inches * CM_PER_IN * 10) / 10 : inches;
+export const fromUnit = (v: number, u: Unit) => u === "cm" ? v / CM_PER_IN : v;
+export const fmtSize = (w: number, h: number, u: Unit) => u === "cm" ? `${toUnit(w, u)} × ${toUnit(h, u)} cm` : `${w}" × ${h}"`;

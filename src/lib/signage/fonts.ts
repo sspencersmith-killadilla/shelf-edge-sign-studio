@@ -1,7 +1,7 @@
-export const FONTS = ["Inter", "Montserrat", "Playfair Display", "Merriweather", "Oswald", "Space Grotesk", "Fredoka", "Lora", "DM Sans", "Roboto Slab"];
+export const FONTS = ["Inter", "Montserrat", "Playfair Display", "Merriweather", "Oswald", "Space Grotesk", "Fredoka", "Lora", "DM Sans", "Roboto Slab", "Noto Sans", "Noto Serif", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans JP", "Noto Sans SC", "Noto Sans Devanagari"];
 
 export function fontStack(f: string) {
-  const serif = ["Playfair Display", "Merriweather", "Lora", "Roboto Slab"].includes(f);
+  const serif = ["Playfair Display", "Merriweather", "Lora", "Roboto Slab", "Noto Serif"].includes(f);
   return `"${f}", ${serif ? "Georgia, serif" : "system-ui, sans-serif"}`;
 }
 

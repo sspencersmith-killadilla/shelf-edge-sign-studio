@@ -6,15 +6,25 @@ import { Switch } from "@/components/ui/switch";
 import type { SavedSign, SignConfig } from "@/lib/signage/types";
 import { DEFAULT_CONFIG } from "@/lib/signage/presets";
 import { FONTS, ensureFont } from "@/lib/signage/fonts";
-import { CSS_PX_PER_IN, exportPixelRatio } from "@/lib/signage/size";
-import { loadSaved, persistSaved } from "@/lib/signage/storage";
+import { CSS_PX_PER_IN, exportPixelRatio, fmtSize, type Unit } from "@/lib/signage/size";
+import { loadBrand, loadSaved, persistSaved } from "@/lib/signage/storage";
+import { Undo2, Redo2 } from "lucide-react";
 import { SignRenderer } from "./SignRenderer";
 import { Sidebar } from "./Sidebar";
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
 export function Studio() {
-  const [cfg, setCfg] = useState<SignConfig>(DEFAULT_CONFIG);
+  const [cfg, setCfgRaw] = useState<SignConfig>(DEFAULT_CONFIG);
+  const hist = useRef<{ past: SignConfig[]; future: SignConfig[]; t: number }>({ past: [], future: [], t: 0 });
+  const setCfg = useCallback((u: SignConfig | ((c: SignConfig) => SignConfig)) => setCfgRaw((c) => {
+    const n = typeof u === "function" ? u(c) : u; const h = hist.current; const now = Date.now();
+    if (now - h.t > 500) { h.past = [...h.past.slice(-49), c]; } h.t = now; h.future = []; return n;
+  }), []);
+  const undo = useCallback(() => setCfgRaw((c) => { const h = hist.current; const p = h.past.pop(); if (!p) return c; h.future.push(c); h.t = 0; return p; }), []);
+  const redo = useCallback(() => setCfgRaw((c) => { const h = hist.current; const f = h.future.pop(); if (!f) return c; h.past.push(c); h.t = 0; return f; }), []);
+  const [unit, setUnitState] = useState<Unit>("in");
+  const setUnit = (u: Unit) => { setUnitState(u); localStorage.setItem("signage-studio:unit", u); };
   const [saved, setSavedState] = useState<SavedSign[]>([]);
   const [open, setOpen] = useState(true);
   const [guides, setGuides] = useState(true);
@@ -25,7 +35,19 @@ export function Studio() {
   const signRef = useRef<HTMLDivElement>(null);
   const W = cfg.width * CSS_PX_PER_IN, H = cfg.height * CSS_PX_PER_IN;
 
-  useEffect(() => { FONTS.forEach(ensureFont); setSavedState(loadSaved()); }, []);
+  useEffect(() => {
+    FONTS.forEach(ensureFont); setSavedState(loadSaved());
+    const b = loadBrand(); if (b) setCfgRaw((c) => ({ ...c, header: b.header, footer: b.footer }));
+    if (localStorage.getItem("signage-studio:unit") === "cm") setUnitState("cm");
+  }, []);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement; if (t.closest("input, textarea, [contenteditable]")) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+      else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); }
+    };
+    window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h);
+  }, [undo, redo]);
   const set = useCallback((p: Partial<SignConfig>) => setCfg((c) => ({ ...c, ...p })), []);
   const setSaved = (s: SavedSign[]) => { setSavedState(s); persistSaved(s); };
 
@@ -86,6 +108,33 @@ export function Studio() {
       pdf.save(`${fileBase}.pdf`); toast.success("PDF exported");
     } catch (e) { console.error(e); toast.error("PDF export failed."); } finally { setBusy(null); }
   };
+  const exportAll = async () => {
+    if (!saved.length) return;
+    setBusy("all"); const t = toast.loading(`Rendering ${saved.length} signs…`);
+    const host = document.createElement("div"); host.style.cssText = "position:fixed;left:-100000px;top:0;";
+    document.body.appendChild(host);
+    const { createRoot } = await import("react-dom/client"); const { flushSync } = await import("react-dom");
+    try {
+      const { toPng } = await import("html-to-image"); const { jsPDF } = await import("jspdf");
+      await document.fonts.ready;
+      let pdf: InstanceType<typeof jsPDF> | null = null;
+      for (const [i, s] of saved.entries()) {
+        const c = s.config; ensureFont(c.headingFont); ensureFont(c.bodyFont);
+        const el = document.createElement("div"); host.appendChild(el);
+        const root = createRoot(el); flushSync(() => root.render(<SignRenderer cfg={c} />));
+        await document.fonts.ready;
+        const r = exportPixelRatio(c.width, c.height);
+        const url = await toPng(el.firstElementChild as HTMLElement, { pixelRatio: r.ratio, width: c.width * CSS_PX_PER_IN, height: c.height * CSS_PX_PER_IN });
+        const o = c.width > c.height ? "landscape" : "portrait";
+        if (!pdf) pdf = new jsPDF({ unit: "in", format: [c.width, c.height], orientation: o }); else pdf.addPage([c.width, c.height], o);
+        pdf.addImage(url, "PNG", 0, 0, c.width, c.height, undefined, "FAST");
+        root.unmount(); el.remove();
+        toast.loading(`Rendered ${i + 1} of ${saved.length}…`, { id: t });
+      }
+      pdf?.save("library-signs.pdf"); toast.success(`Exported ${saved.length} signs`, { id: t });
+    } catch (e) { console.error(e); toast.error("Batch export failed.", { id: t }); }
+    finally { host.remove(); setBusy(null); }
+  };
   const print = () => {
     let s = document.getElementById("page-size-style");
     if (!s) { s = document.createElement("style"); s.id = "page-size-style"; document.head.appendChild(s); }
@@ -103,7 +152,9 @@ export function Studio() {
           <Button variant="ghost" size="icon" onClick={() => setOpen(!open)} aria-label="Toggle editor">{open ? <PanelLeftClose /> : <PanelLeftOpen />}</Button>
           <div className="flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Library className="size-4" /></span><div className="leading-tight"><div className="font-display text-sm font-bold">Signage Studio</div><div className="text-[11px] text-muted-foreground">Library end-panels</div></div></div>
           <div className="mx-2 h-6 w-px bg-border" />
-          <span className="rounded bg-muted px-2 py-1 font-mono text-xs tabular-nums">{cfg.width}" × {cfg.height}"</span>
+          <span className="rounded bg-muted px-2 py-1 font-mono text-xs tabular-nums">{fmtSize(cfg.width, cfg.height, unit)}</span>
+          <Button variant="ghost" size="icon" onClick={undo} aria-label="Undo (Ctrl+Z)"><Undo2 /></Button>
+          <Button variant="ghost" size="icon" onClick={redo} aria-label="Redo (Ctrl+Shift+Z)"><Redo2 /></Button>
           <div className="flex rounded-md border border-border">
             {zooms.map(([l, f]) => <button key={l} onClick={f} className="px-2.5 py-1 text-xs font-medium text-muted-foreground transition first:rounded-l-md last:rounded-r-md hover:bg-muted hover:text-foreground">{l}</button>)}
           </div>
@@ -116,7 +167,7 @@ export function Studio() {
           </div>
         </header>
         <div className="flex min-h-0 flex-1">
-          {open && <aside className="w-[380px] shrink-0 border-r border-border bg-sidebar"><Sidebar cfg={cfg} set={set} replace={setCfg} saved={saved} setSaved={setSaved} /></aside>}
+          {open && <aside className="w-[380px] shrink-0 border-r border-border bg-sidebar"><Sidebar unit={unit} setUnit={setUnit} exportAll={() => void exportAll()} cfg={cfg} set={set} replace={setCfg} saved={saved} setSaved={setSaved} /></aside>}
           <main ref={viewRef} className="canvas-backdrop relative min-w-0 flex-1 cursor-grab overflow-hidden active:cursor-grabbing"
             onPointerDown={(e) => { drag.current = { x: e.clientX - offset.x, y: e.clientY - offset.y }; (e.target as Element).setPointerCapture?.(e.pointerId); }}
             onPointerMove={(e) => { if (drag.current) setOffset({ x: e.clientX - drag.current.x, y: e.clientY - drag.current.y }); }}

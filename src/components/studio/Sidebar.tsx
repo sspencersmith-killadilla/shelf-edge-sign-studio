@@ -10,18 +10,22 @@ import type { SavedSign, SignConfig, Arrow } from "@/lib/signage/types";
 import { COLLECTIONS, ICONS, TEMPLATES, applyCollection, getCollection } from "@/lib/signage/presets";
 import { FONTS, fontStack } from "@/lib/signage/fonts";
 import { SIZE_PRESETS, clampInches, swapOrientation } from "@/lib/signage/size";
-import { parseImport } from "@/lib/signage/storage";
+import { parseImport, persistBrand } from "@/lib/signage/storage";
+import { contrastRatio } from "@/lib/signage/contrast";
+import { signsFromCsv } from "@/lib/signage/csv";
+import { fromUnit, toUnit, fmtSize, type Unit } from "@/lib/signage/size";
+import { AlertTriangle, FileStack } from "lucide-react";
 import { ICON_MAP, SignRenderer } from "./SignRenderer";
 import { Field, RangeField, Seg, ColorField } from "./Field";
 
-interface Props { cfg: SignConfig; set: (p: Partial<SignConfig>) => void; replace: (c: SignConfig) => void; saved: SavedSign[]; setSaved: (s: SavedSign[]) => void }
+interface Props { unit: Unit; setUnit: (u: Unit) => void; exportAll: () => void; cfg: SignConfig; set: (p: Partial<SignConfig>) => void; replace: (c: SignConfig) => void; saved: SavedSign[]; setSaved: (s: SavedSign[]) => void }
 
 const ARROW_OPTS: { v: Arrow; l: React.ReactNode }[] = [
   { v: "none", l: <Ban className="mx-auto size-3.5" /> }, { v: "left", l: <ArrowLeft className="mx-auto size-3.5" /> }, { v: "right", l: <ArrowRight className="mx-auto size-3.5" /> },
   { v: "up", l: <ArrowUp className="mx-auto size-3.5" /> }, { v: "down", l: <ArrowDown className="mx-auto size-3.5" /> }, { v: "both", l: <ArrowLeftRight className="mx-auto size-3.5" /> },
 ];
 
-export function Sidebar({ cfg, set, replace, saved, setSaved }: Props) {
+export function Sidebar({ cfg, set, replace, saved, setSaved, unit, setUnit, exportAll }: Props) {
   return (
     <Tabs defaultValue="content" className="flex h-full flex-col">
       <TabsList className="mx-4 mt-3 grid grid-cols-4">
@@ -33,8 +37,8 @@ export function Sidebar({ cfg, set, replace, saved, setSaved }: Props) {
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <TabsContent value="content" className="space-y-5 pt-3"><ContentTab cfg={cfg} set={set} replace={replace} /></TabsContent>
         <TabsContent value="style" className="space-y-5 pt-3"><StyleTab cfg={cfg} set={set} /></TabsContent>
-        <TabsContent value="size" className="space-y-5 pt-3"><SizeTab cfg={cfg} set={set} /></TabsContent>
-        <TabsContent value="saved" className="space-y-5 pt-3"><SavedTab cfg={cfg} replace={replace} saved={saved} setSaved={setSaved} /></TabsContent>
+        <TabsContent value="size" className="space-y-5 pt-3"><SizeTab cfg={cfg} set={set} unit={unit} setUnit={setUnit} /></TabsContent>
+        <TabsContent value="saved" className="space-y-5 pt-3"><SavedTab cfg={cfg} replace={replace} saved={saved} setSaved={setSaved} exportAll={exportAll} /></TabsContent>
       </div>
     </Tabs>
   );
@@ -52,7 +56,8 @@ function ContentTab({ cfg, set, replace }: Pick<Props, "cfg" | "set" | "replace"
         ))}
       </div>
     </Field>
-    <Field label="Library header" toggle={cfg.showHeader} onToggle={(v) => set({ showHeader: v })}><Input value={cfg.header} onChange={(e) => set({ header: e.target.value })} /></Field>
+    <Field label="Library header" toggle={cfg.showHeader} onToggle={(v) => set({ showHeader: v })}><Input value={cfg.header} onChange={(e) => set({ header: e.target.value })} />
+      <button className="text-xs font-medium text-primary hover:underline" onClick={() => { persistBrand({ header: cfg.header, footer: cfg.footer }); toast.success("Saved as your library's default name and footer"); }}>Make this my library's default</button></Field>
     <Field label="Section title"><Input value={cfg.title} onChange={(e) => set({ title: e.target.value })} /></Field>
     <Field label="Call number range"><Input value={cfg.range} onChange={(e) => set({ range: e.target.value })} /></Field>
     <Field label="Sub-ranges / genres"><Textarea rows={3} value={cfg.subRanges} onChange={(e) => set({ subRanges: e.target.value })} /></Field>
@@ -60,6 +65,7 @@ function ContentTab({ cfg, set, replace }: Pick<Props, "cfg" | "set" | "replace"
     <Field label="Floor / zone" toggle={cfg.showZone} onToggle={(v) => set({ showZone: v })}><Input value={cfg.zone} onChange={(e) => set({ zone: e.target.value })} /></Field>
     <Field label="Direction arrow"><Seg value={cfg.arrow} options={ARROW_OPTS} onChange={(v) => set({ arrow: v })} /></Field>
     <Field label="Footer note"><Input value={cfg.footer} onChange={(e) => set({ footer: e.target.value })} /></Field>
+    <Field label="Text direction"><Seg value={cfg.dir ?? "ltr"} options={[{ v: "ltr", l: "Left to right" }, { v: "rtl", l: "Right to left" }]} onChange={(v) => set({ dir: v })} /></Field>
     <Field label="Icon" toggle={cfg.showIcon} onToggle={(v) => set({ showIcon: v })}>
       <div className="grid grid-cols-6 gap-1.5">
         {ICONS.map((n) => { const I = ICON_MAP[n]!; return (
@@ -111,6 +117,9 @@ function StyleTab({ cfg, set }: Pick<Props, "cfg" | "set">) {
         <ColorField label="Text" value={p.text} onChange={(v) => set({ palette: { ...p, text: v } })} />
         <ColorField label="Background" value={p.background} onChange={(v) => set({ palette: { ...p, background: v } })} />
       </div>
+      {[["Text on background", p.text, p.background], ["Accent on background", p.accent, p.background]].map(([l, a, b]) => { const r = contrastRatio(a!, b!); return r < 3 ? (
+        <p key={l} className="flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />{l}: contrast {r}:1 is hard to read. Aim for at least 3:1 (4.5:1 for small text).</p>
+      ) : null; })}
       <Button variant="outline" size="sm" className="w-full" onClick={() => set({ palette: { ...getCollection(cfg.collection).palette } })}><RotateCcw /> Reset to collection default</Button>
     </Field>
     {fontSel("Heading font", "headingFont")}
@@ -138,9 +147,11 @@ function StyleTab({ cfg, set }: Pick<Props, "cfg" | "set">) {
   </>);
 }
 
-function SizeTab({ cfg, set }: Pick<Props, "cfg" | "set">) {
+function SizeTab({ cfg, set, unit, setUnit }: Pick<Props, "cfg" | "set" | "unit" | "setUnit">) {
   const portrait = cfg.height >= cfg.width;
   return (<>
+    <Field label="Units"><Seg value={unit} options={[{ v: "in", l: "Inches" }, { v: "cm", l: "Centimeters" }]} onChange={setUnit} /></Field>
+    <p className="text-xs text-muted-foreground">Current: {fmtSize(cfg.width, cfg.height, unit)}</p>
     <Field label="Print size">
       <div className="space-y-1.5">
         {SIZE_PRESETS.map((s) => (
@@ -151,9 +162,10 @@ function SizeTab({ cfg, set }: Pick<Props, "cfg" | "set">) {
     </Field>
     {cfg.sizePreset === "custom" && (
       <div className="grid grid-cols-2 gap-2">
-        <Field label='Width (in)'><Input type="number" min={3} max={48} step={0.25} defaultValue={cfg.width} onBlur={(e) => { const v = clampInches(+e.target.value); e.target.value = String(v); set({ width: v }); }} /></Field>
-        <Field label='Height (in)'><Input type="number" min={3} max={48} step={0.25} defaultValue={cfg.height} onBlur={(e) => { const v = clampInches(+e.target.value); e.target.value = String(v); set({ height: v }); }} /></Field>
-        <p className="col-span-2 text-xs text-muted-foreground">Between 3" and 48". Applies when you leave the field.</p>
+        {(["width", "height"] as const).map((k) => (
+          <Field key={k + unit} label={`${k === "width" ? "Width" : "Height"} (${unit})`}><Input type="number" step={unit === "cm" ? 0.5 : 0.25} defaultValue={toUnit(cfg[k], unit)} onBlur={(e) => { const v = clampInches(fromUnit(+e.target.value, unit)); e.target.value = String(toUnit(v, unit)); set({ [k]: v }); }} /></Field>
+        ))}
+        <p className="col-span-2 text-xs text-muted-foreground">Between 3" and 48" (7.6–122 cm). Applies when you leave the field.</p>
       </div>
     )}
     <Field label="Orientation"><Seg value={portrait ? "portrait" : "landscape"} options={[{ v: "portrait", l: "Portrait" }, { v: "landscape", l: "Landscape" }]} onChange={(o) => set(swapOrientation(cfg.width, cfg.height, o))} /></Field>
@@ -162,9 +174,16 @@ function SizeTab({ cfg, set }: Pick<Props, "cfg" | "set">) {
   </>);
 }
 
-function SavedTab({ cfg, replace, saved, setSaved }: Pick<Props, "cfg" | "replace" | "saved" | "setSaved">) {
+function SavedTab({ cfg, replace, saved, setSaved, exportAll }: Pick<Props, "cfg" | "replace" | "saved" | "setSaved" | "exportAll">) {
   const [name, setName] = useState("");
   const importRef = useRef<HTMLInputElement>(null);
+  const csvRef = useRef<HTMLInputElement>(null);
+  const importCsv = async (f?: File) => {
+    if (!f) return;
+    if (f.size > 2_000_000) { toast.error("That spreadsheet is too large (2 MB max)"); return; }
+    try { const { signs, skipped } = signsFromCsv(await f.text(), cfg); setSaved([...signs, ...saved]); toast.success(`Created ${signs.length} sign${signs.length === 1 ? "" : "s"}${skipped ? `, skipped ${skipped} row${skipped === 1 ? "" : "s"} with no range` : ""}`); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Could not read that spreadsheet"); }
+  };
   const save = () => {
     const n = name.trim() || `${cfg.title} ${cfg.range}`.trim();
     setSaved([{ id: `s-${Date.now()}`, name: n, savedAt: Date.now(), config: cfg }, ...saved]);
@@ -187,7 +206,11 @@ function SavedTab({ cfg, replace, saved, setSaved }: Pick<Props, "cfg" | "replac
       <Button variant="outline" size="sm" onClick={exportJson} disabled={!saved.length}><Download /> Export JSON</Button>
       <Button variant="outline" size="sm" onClick={() => importRef.current?.click()}><Upload /> Import JSON</Button>
       <input ref={importRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { void importJson(e.target.files?.[0]); e.target.value = ""; }} />
+      <Button variant="outline" size="sm" onClick={() => csvRef.current?.click()}><Upload /> Import CSV run</Button>
+      <Button variant="outline" size="sm" onClick={exportAll} disabled={!saved.length}><FileStack /> All as one PDF</Button>
+      <input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { void importCsv(e.target.files?.[0]); e.target.value = ""; }} />
     </div>
+    <p className="text-xs text-muted-foreground">CSV columns: title, range, sub-ranges (separate lines with |), aisle, zone, footer. Each row becomes a sign using the current design.</p>
     <Field label={`Saved signs (${saved.length})`}>
       {saved.length === 0 ? <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">No saved signs yet. Save one to build a whole aisle run.</p> : (
         <ul className="space-y-1.5">

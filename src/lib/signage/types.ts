@@ -4,7 +4,7 @@ export type Align = "left" | "center" | "right";
 export type Frame = "none" | "thin" | "thick" | "double";
 export type ImageFit = "cover" | "contain" | "tile";
 export type Focal = "center" | "top" | "bottom" | "left" | "right";
-export type CollectionId = "adult-fiction" | "adult-nonfiction" | "young-adult" | "mid-grade" | "kids" | "genealogy" | "holds";
+export type CollectionId = "adult-fiction" | "adult-nonfiction" | "young-adult" | "mid-grade" | "kids" | "genealogy" | "holds" | "lc-academic" | "lc-history";
 
 export interface Palette { primary: string; accent: string; text: string; background: string }
 
@@ -42,6 +42,7 @@ export interface SignConfig {
   height: number;
   padding: number;
   frame: Frame;
+  dir?: "ltr" | "rtl";
 }
 
 export interface SavedSign { id: string; name: string; savedAt: number; config: SignConfig }

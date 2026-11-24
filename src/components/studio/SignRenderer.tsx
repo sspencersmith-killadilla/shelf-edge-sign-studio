@@ -29,7 +29,7 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
   const items = ta === "left" ? "flex-start" : ta === "right" ? "flex-end" : "center";
   const frameW = { none: 0, thin: u * 0.6, thick: u * 1.8, double: u * 0.6 }[cfg.frame];
 
-  const root: CSSProperties = { width: W, height: H, position: "relative", overflow: "hidden", background: p.background, color: p.text, fontFamily: body, boxSizing: "border-box" };
+  const root: CSSProperties = { width: W, height: H, position: "relative", overflow: "hidden", background: p.background, color: p.text, fontFamily: body, boxSizing: "border-box", direction: cfg.dir ?? "ltr" };
   const bgImg = cfg.image ? (
     <div style={{ position: "absolute", inset: cfg.blur ? -cfg.blur * 2 : 0, backgroundImage: `url(${cfg.image})`, backgroundSize: cfg.imageFit === "tile" ? `${u * 30}px` : cfg.imageFit, backgroundRepeat: cfg.imageFit === "tile" ? "repeat" : "no-repeat", backgroundPosition: cfg.focal, filter: cfg.blur ? `blur(${cfg.blur}px)` : undefined }} />
   ) : null;
