@@ -30,6 +30,7 @@ use the editor.
 <!-- LOVABLE:END -->
 
 ## Project rules
-- Signage studio is 100% client-side: sign state lives in React, saved signs in localStorage (`src/lib/signage/storage.ts`); no backend.
+
 - Signs render in CSS inches (96px/in) via `SignRenderer`; exports scale with `exportPixelRatio` for 300 DPI so preview and output match.
 - Sign sizes are stored in inches internally; centimeters are converted only at the UI edge (`toUnit`/`fromUnit` in size.ts) so exports stay exact.
+- Studio itself stays client-side; only optional branch sharing uses Lovable Cloud (libraries, library_members, shared_signs with member-scoped RLS; create/join via security-definer RPCs) so the app keeps working signed-out.

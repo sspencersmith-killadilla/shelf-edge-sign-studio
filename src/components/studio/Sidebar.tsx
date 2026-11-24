@@ -19,6 +19,7 @@ import { useT } from "@/lib/signage/i18n";
 import { cmykRisk, readableDistanceFt } from "@/lib/signage/print";
 import { CSS_PX_PER_IN } from "@/lib/signage/size";
 import { ICON_MAP, SignRenderer } from "./SignRenderer";
+import { BranchPanel } from "./BranchPanel";
 import { Field, RangeField, Seg, ColorField } from "./Field";
 
 interface Props { shopPdf: () => void; duplexPdf: () => void; unit: Unit; setUnit: (u: Unit) => void; exportAll: () => void; cfg: SignConfig; set: (p: Partial<SignConfig>) => void; replace: (c: SignConfig) => void; saved: SavedSign[]; setSaved: (s: SavedSign[]) => void }
@@ -227,7 +228,8 @@ function SavedTab({ cfg, replace, saved, setSaved, exportAll }: Pick<Props, "cfg
       <Button variant="outline" size="sm" onClick={exportAll} disabled={!saved.length}><FileStack /> All as one PDF</Button>
       <input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { void importCsv(e.target.files?.[0]); e.target.value = ""; }} />
     </div>
-    <p className="flex gap-1.5 rounded-md bg-muted p-2 text-xs text-muted-foreground"><ShieldCheck className="size-3.5 shrink-0" />Private by design: signs stay in this browser. No patron data is collected or sent anywhere.</p>
+    <BranchPanel cfg={cfg} replace={replace} />
+    <p className="flex gap-1.5 rounded-md bg-muted p-2 text-xs text-muted-foreground"><ShieldCheck className="size-3.5 shrink-0" />Private by design: saved signs stay in this browser unless you share them with your library. No patron data is collected.</p>
     <p className="text-xs text-muted-foreground">CSV columns: title, range, sub-ranges (separate lines with |), aisle, zone, footer. Each row becomes a sign using the current design.</p>
     <Field label={`Saved signs (${saved.length})`}>
       {saved.length === 0 ? <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">No saved signs yet. Save one to build a whole aisle run.</p> : (
