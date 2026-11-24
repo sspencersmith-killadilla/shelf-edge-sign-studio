@@ -14,30 +14,34 @@ import { parseImport, persistBrand } from "@/lib/signage/storage";
 import { contrastRatio } from "@/lib/signage/contrast";
 import { signsFromCsv } from "@/lib/signage/csv";
 import { fromUnit, toUnit, fmtSize, type Unit } from "@/lib/signage/size";
-import { AlertTriangle, FileStack } from "lucide-react";
+import { AlertTriangle, FileStack, Scissors, Columns2, ShieldCheck } from "lucide-react";
+import { useT } from "@/lib/signage/i18n";
+import { cmykRisk, readableDistanceFt } from "@/lib/signage/print";
+import { CSS_PX_PER_IN } from "@/lib/signage/size";
 import { ICON_MAP, SignRenderer } from "./SignRenderer";
 import { Field, RangeField, Seg, ColorField } from "./Field";
 
-interface Props { unit: Unit; setUnit: (u: Unit) => void; exportAll: () => void; cfg: SignConfig; set: (p: Partial<SignConfig>) => void; replace: (c: SignConfig) => void; saved: SavedSign[]; setSaved: (s: SavedSign[]) => void }
+interface Props { shopPdf: () => void; duplexPdf: () => void; unit: Unit; setUnit: (u: Unit) => void; exportAll: () => void; cfg: SignConfig; set: (p: Partial<SignConfig>) => void; replace: (c: SignConfig) => void; saved: SavedSign[]; setSaved: (s: SavedSign[]) => void }
 
 const ARROW_OPTS: { v: Arrow; l: React.ReactNode }[] = [
   { v: "none", l: <Ban className="mx-auto size-3.5" /> }, { v: "left", l: <ArrowLeft className="mx-auto size-3.5" /> }, { v: "right", l: <ArrowRight className="mx-auto size-3.5" /> },
   { v: "up", l: <ArrowUp className="mx-auto size-3.5" /> }, { v: "down", l: <ArrowDown className="mx-auto size-3.5" /> }, { v: "both", l: <ArrowLeftRight className="mx-auto size-3.5" /> },
 ];
 
-export function Sidebar({ cfg, set, replace, saved, setSaved, unit, setUnit, exportAll }: Props) {
+export function Sidebar({ cfg, set, replace, saved, setSaved, unit, setUnit, exportAll, shopPdf, duplexPdf }: Props) {
+  const t = useT();
   return (
     <Tabs defaultValue="content" className="flex h-full flex-col">
       <TabsList className="mx-4 mt-3 grid grid-cols-4">
-        <TabsTrigger value="content" className="text-xs">Content</TabsTrigger>
-        <TabsTrigger value="style" className="text-xs">Style</TabsTrigger>
-        <TabsTrigger value="size" className="text-xs">Size</TabsTrigger>
-        <TabsTrigger value="saved" className="text-xs">Saved</TabsTrigger>
+        <TabsTrigger value="content" className="text-xs">{t("Content")}</TabsTrigger>
+        <TabsTrigger value="style" className="text-xs">{t("Style")}</TabsTrigger>
+        <TabsTrigger value="size" className="text-xs">{t("Size")}</TabsTrigger>
+        <TabsTrigger value="saved" className="text-xs">{t("Saved")}</TabsTrigger>
       </TabsList>
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <TabsContent value="content" className="space-y-5 pt-3"><ContentTab cfg={cfg} set={set} replace={replace} /></TabsContent>
         <TabsContent value="style" className="space-y-5 pt-3"><StyleTab cfg={cfg} set={set} /></TabsContent>
-        <TabsContent value="size" className="space-y-5 pt-3"><SizeTab cfg={cfg} set={set} unit={unit} setUnit={setUnit} /></TabsContent>
+        <TabsContent value="size" className="space-y-5 pt-3"><SizeTab cfg={cfg} set={set} unit={unit} setUnit={setUnit} shopPdf={shopPdf} duplexPdf={duplexPdf} /></TabsContent>
         <TabsContent value="saved" className="space-y-5 pt-3"><SavedTab cfg={cfg} replace={replace} saved={saved} setSaved={setSaved} exportAll={exportAll} /></TabsContent>
       </div>
     </Tabs>
@@ -65,6 +69,10 @@ function ContentTab({ cfg, set, replace }: Pick<Props, "cfg" | "set" | "replace"
     <Field label="Floor / zone" toggle={cfg.showZone} onToggle={(v) => set({ showZone: v })}><Input value={cfg.zone} onChange={(e) => set({ zone: e.target.value })} /></Field>
     <Field label="Direction arrow"><Seg value={cfg.arrow} options={ARROW_OPTS} onChange={(v) => set({ arrow: v })} /></Field>
     <Field label="Footer note"><Input value={cfg.footer} onChange={(e) => set({ footer: e.target.value })} /></Field>
+    <Field label="QR code link"><Input placeholder="https://catalog.yourlibrary.org/…" value={cfg.qr ?? ""} onChange={(e) => set({ qr: e.target.value })} />
+      <p className="text-xs text-muted-foreground">Adds a scannable code in the bottom corner. Leave empty to hide.</p></Field>
+    <Field label="Braille preview" toggle={!!cfg.braille} onToggle={(v) => set({ braille: v })}>
+      <p className="text-xs text-muted-foreground">Shows the call number range in Grade 1 braille as a reference for your sign maker. Printed dots are not tactile, so ADA signs need a fabricated raised-braille panel.</p></Field>
     <Field label="Text direction"><Seg value={cfg.dir ?? "ltr"} options={[{ v: "ltr", l: "Left to right" }, { v: "rtl", l: "Right to left" }]} onChange={(v) => set({ dir: v })} /></Field>
     <Field label="Icon" toggle={cfg.showIcon} onToggle={(v) => set({ showIcon: v })}>
       <div className="grid grid-cols-6 gap-1.5">
@@ -120,12 +128,14 @@ function StyleTab({ cfg, set }: Pick<Props, "cfg" | "set">) {
       {[["Text on background", p.text, p.background], ["Accent on background", p.accent, p.background]].map(([l, a, b]) => { const r = contrastRatio(a!, b!); return r < 3 ? (
         <p key={l} className="flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />{l}: contrast {r}:1 is hard to read. Aim for at least 3:1 (4.5:1 for small text).</p>
       ) : null; })}
+      {Object.entries(p).filter(([, v]) => cmykRisk(v)).map(([k]) => <p key={k} className="flex items-start gap-1.5 rounded-md border border-border bg-muted p-2 text-xs text-muted-foreground"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" />The {k} color is very bright and may print duller than on screen.</p>)}
       <Button variant="outline" size="sm" className="w-full" onClick={() => set({ palette: { ...getCollection(cfg.collection).palette } })}><RotateCcw /> Reset to collection default</Button>
     </Field>
     {fontSel("Heading font", "headingFont")}
     {fontSel("Body / call-number font", "bodyFont")}
     <RangeField label="Title size" value={cfg.titleScale} min={0.4} max={2} step={0.05} onChange={(v) => set({ titleScale: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
     <RangeField label="Call number size" value={cfg.rangeScale} min={0.4} max={2} step={0.05} onChange={(v) => set({ rangeScale: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+    <p className="-mt-3 text-xs text-muted-foreground">Call numbers readable from about {readableDistanceFt((Math.min(cfg.width, cfg.height) * CSS_PX_PER_IN / 100) * (cfg.width / cfg.height < 0.45 ? 15 : 13) * cfg.rangeScale)} ft (1" letters per 10 ft).</p>
     <RangeField label="Body size" value={cfg.bodyScale} min={0.4} max={2} step={0.05} onChange={(v) => set({ bodyScale: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
     <Field label="Alignment"><Seg value={cfg.align} options={[{ v: "left", l: "Left" }, { v: "center", l: "Center" }, { v: "right", l: "Right" }]} onChange={(v) => set({ align: v })} /></Field>
     <Field label="Background image">
@@ -147,7 +157,7 @@ function StyleTab({ cfg, set }: Pick<Props, "cfg" | "set">) {
   </>);
 }
 
-function SizeTab({ cfg, set, unit, setUnit }: Pick<Props, "cfg" | "set" | "unit" | "setUnit">) {
+function SizeTab({ cfg, set, unit, setUnit, shopPdf, duplexPdf }: Pick<Props, "cfg" | "set" | "unit" | "setUnit" | "shopPdf" | "duplexPdf">) {
   const portrait = cfg.height >= cfg.width;
   return (<>
     <Field label="Units"><Seg value={unit} options={[{ v: "in", l: "Inches" }, { v: "cm", l: "Centimeters" }]} onChange={setUnit} /></Field>
@@ -171,6 +181,13 @@ function SizeTab({ cfg, set, unit, setUnit }: Pick<Props, "cfg" | "set" | "unit"
     <Field label="Orientation"><Seg value={portrait ? "portrait" : "landscape"} options={[{ v: "portrait", l: "Portrait" }, { v: "landscape", l: "Landscape" }]} onChange={(o) => set(swapOrientation(cfg.width, cfg.height, o))} /></Field>
     <RangeField label="Padding" value={cfg.padding} min={0.25} max={3} step={0.05} onChange={(v) => set({ padding: v })} fmt={(v) => `${v.toFixed(2)}"`} />
     <Field label="Border / frame"><Seg value={cfg.frame} options={[{ v: "none", l: "None" }, { v: "thin", l: "Thin" }, { v: "thick", l: "Thick" }, { v: "double", l: "Double" }]} onChange={(v) => set({ frame: v })} /></Field>
+    <Field label="Print shop">
+      <div className="grid gap-2">
+        <Button variant="outline" size="sm" onClick={shopPdf}><Scissors /> PDF with bleed & crop marks</Button>
+        <Button variant="outline" size="sm" onClick={duplexPdf}><Columns2 /> Double-sided PDF (front + back)</Button>
+      </div>
+      <p className="text-xs text-muted-foreground">Bleed adds 0.125" of background on every side. The back page flips left/right arrows for the other side of the shelf.</p>
+    </Field>
   </>);
 }
 
@@ -210,6 +227,7 @@ function SavedTab({ cfg, replace, saved, setSaved, exportAll }: Pick<Props, "cfg
       <Button variant="outline" size="sm" onClick={exportAll} disabled={!saved.length}><FileStack /> All as one PDF</Button>
       <input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { void importCsv(e.target.files?.[0]); e.target.value = ""; }} />
     </div>
+    <p className="flex gap-1.5 rounded-md bg-muted p-2 text-xs text-muted-foreground"><ShieldCheck className="size-3.5 shrink-0" />Private by design: signs stay in this browser. No patron data is collected or sent anywhere.</p>
     <p className="text-xs text-muted-foreground">CSV columns: title, range, sub-ranges (separate lines with |), aisle, zone, footer. Each row becomes a sign using the current design.</p>
     <Field label={`Saved signs (${saved.length})`}>
       {saved.length === 0 ? <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">No saved signs yet. Save one to build a whole aisle run.</p> : (

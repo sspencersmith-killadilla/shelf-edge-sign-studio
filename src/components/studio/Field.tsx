@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { useT } from "@/lib/signage/i18n";
 
 export function Field({ label, children, toggle, onToggle }: { label: string; children: ReactNode; toggle?: boolean; onToggle?: (v: boolean) => void }) {
+  const t = useT(); label = t(label);
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
@@ -16,6 +18,7 @@ export function Field({ label, children, toggle, onToggle }: { label: string; ch
 }
 
 export function RangeField({ label, value, min, max, step, onChange, fmt }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; fmt?: (v: number) => string }) {
+  const t = useT(); label = t(label);
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-xs"><span className="font-semibold uppercase tracking-wide text-muted-foreground">{label}</span><span className="tabular-nums text-foreground">{fmt ? fmt(value) : value}</span></div>

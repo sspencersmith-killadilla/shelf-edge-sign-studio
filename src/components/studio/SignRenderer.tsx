@@ -2,6 +2,8 @@ import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ArrowLeftRight, BookOpen, Library, Compass, Search, Star, Clock, BookMarked, Users, Sparkles, Landmark, TreePine, Map, type LucideIcon } from "lucide-react";
 import type { SignConfig } from "@/lib/signage/types";
 import { fontStack } from "@/lib/signage/fonts";
+import qrcode from "qrcode-generator";
+import { toBraille } from "@/lib/signage/print";
 import { CSS_PX_PER_IN } from "@/lib/signage/size";
 
 export const ICON_MAP: Record<string, LucideIcon> = { BookOpen, Library, Compass, Search, Star, Clock, BookMarked, Users, Sparkles, Landmark, TreePine, Map };
@@ -159,6 +161,20 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
       {bgImg}{tint}
       {content}
       {frame}
+      {(cfg.qr?.trim() || cfg.braille) && (
+        <div style={{ position: "absolute", right: u * 4, bottom: H * 0.15, display: "flex", alignItems: "flex-end", gap: u * 2, zIndex: 6 }}>
+          {cfg.braille && cfg.range && <div style={{ background: "#fff", color: "#111", borderRadius: u, padding: `${u}px ${u * 2}px`, fontSize: u * 4, lineHeight: 1.1, fontFamily: "system-ui, sans-serif", maxWidth: W * 0.5 }} title="Braille reference">{toBraille(cfg.range)}</div>}
+          {cfg.qr?.trim() && <Qr text={cfg.qr.trim()} size={Math.max(u * 14, 0.9 * CSS_PX_PER_IN)} />}
+        </div>
+      )}
     </div>
   );
 });
+
+function Qr({ text, size }: { text: string; size: number }) {
+  const q = qrcode(0, "M"); q.addData(text); q.make();
+  const n = q.getModuleCount(), m = 2;
+  const rects: ReactNode[] = [];
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) rects.push(<rect key={r * n + c} x={c + m} y={r + m} width={1.02} height={1.02} />);
+  return <svg width={size} height={size} viewBox={`0 0 ${n + m * 2} ${n + m * 2}`} style={{ background: "#fff", display: "block" }} shapeRendering="crispEdges"><g fill="#000">{rects}</g></svg>;
+}

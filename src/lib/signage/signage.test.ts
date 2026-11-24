@@ -48,3 +48,12 @@ describe("CSV batch import", () => {
   });
   it("rejects CSV without a range column", () => expect(() => signsFromCsv("title\nX", DEFAULT_CONFIG)).toThrow());
 });
+
+import { readableDistanceFt, toBraille, cmykRisk } from "./print";
+import { translate } from "./i18n";
+describe("print helpers", () => {
+  it("1-inch cap height reads from 10 ft", () => expect(readableDistanceFt(96 / 0.7)).toBe(10));
+  it("braille spells letters and numbers", () => expect(toBraille("ab 12")).toBe("⠁⠃⠀⠼⠁⠃"));
+  it("neon green is flagged for CMYK, navy is not", () => { expect(cmykRisk("#00FF00")).toBe(true); expect(cmykRisk("#1B2A4A")).toBe(false); });
+  it("Spanish label translates, unknown falls back", () => { expect(translate("es", "Print")).toBe("Imprimir"); expect(translate("fr", "Zzz")).toBe("Zzz"); });
+});

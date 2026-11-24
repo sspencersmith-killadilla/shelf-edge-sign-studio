@@ -43,6 +43,8 @@ export interface SignConfig {
   padding: number;
   frame: Frame;
   dir?: "ltr" | "rtl";
+  qr?: string;
+  braille?: boolean;
 }
 
 export interface SavedSign { id: string; name: string; savedAt: number; config: SignConfig }
