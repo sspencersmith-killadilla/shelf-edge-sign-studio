@@ -20,6 +20,7 @@ import { cmykRisk, readableDistanceFt } from "@/lib/signage/print";
 import { CSS_PX_PER_IN } from "@/lib/signage/size";
 import { ICON_MAP, SignRenderer } from "./SignRenderer";
 import { BranchPanel } from "./BranchPanel";
+import { WordingPanel } from "./WordingPanel";
 import { Field, RangeField, Seg, ColorField } from "./Field";
 
 interface Props { shopPdf: () => void; duplexPdf: () => void; unit: Unit; setUnit: (u: Unit) => void; exportAll: () => void; cfg: SignConfig; set: (p: Partial<SignConfig>) => void; replace: (c: SignConfig) => void; saved: SavedSign[]; setSaved: (s: SavedSign[]) => void }
@@ -61,6 +62,7 @@ function ContentTab({ cfg, set, replace }: Pick<Props, "cfg" | "set" | "replace"
         ))}
       </div>
     </Field>
+    <WordingPanel cfg={cfg} set={set} />
     <Field label="Library header" toggle={cfg.showHeader} onToggle={(v) => set({ showHeader: v })}><Input value={cfg.header} onChange={(e) => set({ header: e.target.value })} />
       <button className="text-xs font-medium text-primary hover:underline" onClick={() => { persistBrand({ header: cfg.header, footer: cfg.footer }); toast.success("Saved as your library's default name and footer"); }}>Make this my library's default</button></Field>
     <Field label="Section title"><Input value={cfg.title} onChange={(e) => set({ title: e.target.value })} /></Field>

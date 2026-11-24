@@ -1,4 +1,5 @@
-import { forwardRef, type CSSProperties, type ReactNode } from "react";
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { placeOverlays, type Rect } from "@/lib/signage/placement";
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ArrowLeftRight, BookOpen, Library, Compass, Search, Star, Clock, BookMarked, Users, Sparkles, Landmark, TreePine, Map, type LucideIcon } from "lucide-react";
 import type { SignConfig } from "@/lib/signage/types";
 import { fontStack } from "@/lib/signage/fonts";
@@ -40,14 +41,14 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
     <div style={{ position: "absolute", inset: u * 2, border: `${frameW}px solid ${p.accent}`, outline: cfg.frame === "double" ? `${u * 0.6}px solid ${p.accent}` : undefined, outlineOffset: u * 1.2, pointerEvents: "none", zIndex: 5 }} />
   ) : null;
 
-  const T = (s: CSSProperties, c: ReactNode) => <div style={s}>{c}</div>;
-  const header = cfg.showHeader && cfg.header ? T({ fontFamily: head, fontWeight: 700, letterSpacing: "0.14em", fontSize: bodySize * 0.8, textTransform: "uppercase" }, cfg.header) : null;
-  const titleEl = T({ fontFamily: head, fontWeight: 800, fontSize: titleSize, lineHeight: 1.02, letterSpacing: "-0.01em", textAlign: ta }, cfg.title);
-  const rangeEl = T({ fontFamily: body, fontWeight: 800, fontSize: rangeSize, lineHeight: 1, letterSpacing: "-0.02em", textAlign: ta, whiteSpace: "pre-wrap" }, cfg.range);
-  const subEl = cfg.subRanges ? T({ fontSize: bodySize, lineHeight: 1.45, whiteSpace: "pre-line", textAlign: ta, opacity: 0.9 }, cfg.subRanges) : null;
-  const zoneEl = cfg.showZone && cfg.zone ? T({ fontSize: bodySize * 0.85, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase" }, cfg.zone) : null;
+  const T = (s: CSSProperties, c: ReactNode, n?: string) => <div style={s} data-txt={n}>{c}</div>;
+  const header = cfg.showHeader && cfg.header ? T({ fontFamily: head, fontWeight: 700, letterSpacing: "0.14em", fontSize: bodySize * 0.8, textTransform: "uppercase" }, cfg.header, "header") : null;
+  const titleEl = T({ fontFamily: head, fontWeight: 800, fontSize: titleSize, lineHeight: 1.02, letterSpacing: "-0.01em", textAlign: ta }, cfg.title, "title");
+  const rangeEl = T({ fontFamily: body, fontWeight: 800, fontSize: rangeSize, lineHeight: 1, letterSpacing: "-0.02em", textAlign: ta, whiteSpace: "pre-wrap" }, cfg.range, "range");
+  const subEl = cfg.subRanges ? T({ fontSize: bodySize, lineHeight: 1.45, whiteSpace: "pre-line", textAlign: ta, opacity: 0.9 }, cfg.subRanges, "sub") : null;
+  const zoneEl = cfg.showZone && cfg.zone ? T({ fontSize: bodySize * 0.85, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase" }, cfg.zone, "zone") : null;
   const aisleEl = cfg.showAisle && cfg.aisle ? cfg.aisle : null;
-  const footerEl = cfg.footer ? T({ fontSize: bodySize * 0.8, opacity: 0.85, textAlign: ta }, cfg.footer) : null;
+  const footerEl = cfg.footer ? T({ fontSize: bodySize * 0.8, opacity: 0.85, textAlign: ta }, cfg.footer, "footer") : null;
   const arrowEl = (size: number, color: string) => (ArrowI ? <ArrowI size={size} color={color} strokeWidth={2.4} /> : null);
   const iconEl = (size: number, color: string) => (cfg.showIcon ? <Icon size={size} color={color} strokeWidth={1.8} /> : null);
   const col = (gap: number): CSSProperties => ({ display: "flex", flexDirection: "column", alignItems: items, gap, textAlign: ta });
@@ -63,7 +64,7 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
           </div>
           <div style={{ height: u * 2, background: p.accent }} />
           <div style={{ flex: 1, padding: pad, ...col(u * 4), justifyContent: "center" }}>
-            {aisleEl && T({ fontFamily: head, fontWeight: 700, fontSize: bodySize, letterSpacing: "0.2em", color: p.primary }, aisleEl)}
+            {aisleEl && T({ fontFamily: head, fontWeight: 700, fontSize: bodySize, letterSpacing: "0.2em", color: p.primary }, aisleEl, "aisle")}
             <div style={{ color: p.primary }}>{rangeEl}</div>
             {subEl}
             {arrowEl(rangeSize * 0.9, p.accent)}
@@ -83,7 +84,7 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
             {rangeEl}
             <div style={{ width: u * 12, height: u * 0.4, background: p.accent }} />
             {subEl}
-            {aisleEl && T({ fontFamily: head, fontSize: bodySize, letterSpacing: "0.25em", color: p.primary }, aisleEl)}
+            {aisleEl && T({ fontFamily: head, fontSize: bodySize, letterSpacing: "0.25em", color: p.primary }, aisleEl, "aisle")}
             {arrowEl(rangeSize * 0.7, p.primary)}
             <div style={{ marginTop: "auto", ...col(u) }}>{zoneEl}{footerEl}</div>
           </div>
@@ -96,7 +97,7 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
         <div style={{ position: "absolute", inset: 0, display: "flex" }}>
           <div style={{ width: bar, background: p.primary, color: p.background, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: `${pad}px ${u * 2}px` }}>
             {iconEl(bar * 0.4, p.accent)}
-            {aisleEl && <div style={{ textAlign: "center", fontFamily: head }}>
+            {aisleEl && <div style={{ textAlign: "center", fontFamily: head }} data-txt="aisle">
               <div style={{ fontSize: bar * 0.11, letterSpacing: "0.2em", fontWeight: 600 }}>{aisleEl.replace(/[\d\s]+$/, "") || "AISLE"}</div>
               <div style={{ fontSize: bar * 0.55, fontWeight: 800, lineHeight: 1, color: p.accent }}>{aisleEl.match(/\d+/)?.[0] ?? aisleEl}</div>
             </div>}
@@ -146,7 +147,7 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
             {rangeEl}
             {subEl}
             <div style={{ display: "flex", gap: u * 4, alignItems: "center" }}>
-              {aisleEl && T({ fontFamily: head, fontWeight: 700, fontSize: bodySize, letterSpacing: "0.2em", color: p.primary }, aisleEl)}
+              {aisleEl && T({ fontFamily: head, fontWeight: 700, fontSize: bodySize, letterSpacing: "0.2em", color: p.primary }, aisleEl, "aisle")}
               {arrowEl(rangeSize * 0.6, p.primary)}
             </div>
             {zoneEl}{footerEl}
@@ -156,17 +157,34 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
       break;
   }
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  useImperativeHandle(ref, () => rootRef.current as HTMLDivElement);
+  const qrRef = useRef<HTMLDivElement>(null), brRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ qr?: Rect | undefined; br?: Rect | undefined; overlap: boolean }>({ overlap: false });
+  const showBr = !!(cfg.braille && cfg.range), qrText = cfg.qr?.trim() ?? "";
+  useLayoutEffect(() => {
+    const el = rootRef.current; if (!el || (!showBr && !qrText)) { setPos({ overlap: false }); return; }
+    const box = el.getBoundingClientRect(); const k = box.width / W || 1;
+    const obstacles: Rect[] = [];
+    el.querySelectorAll("[data-txt]").forEach((t) => {
+      const r = document.createRange(); r.selectNodeContents(t);
+      for (const c of r.getClientRects()) if (c.width && c.height) obstacles.push({ x: (c.left - box.left) / k, y: (c.top - box.top) / k, w: c.width / k, h: c.height / k });
+    });
+    const items = [qrText ? qrRef.current : null, showBr ? brRef.current : null];
+    const sizes = items.filter(Boolean).map((n) => ({ w: n!.offsetWidth, h: n!.offsetHeight }));
+    const placed = placeOverlays(W, H, u * 4, u * 1.5, obstacles, sizes);
+    let i = 0; const next = { qr: qrText ? placed[i++] : undefined, br: showBr ? placed[i++] : undefined, overlap: placed.some((p) => p.overlap) };
+    setPos((p) => (JSON.stringify(p) === JSON.stringify(next) ? p : next));
+  }, [cfg, W, H, u, showBr, qrText]);
+  const at = (r?: Rect): CSSProperties => (r ? { position: "absolute", left: r.x, top: r.y, zIndex: 6 } : { position: "absolute", right: u * 4, bottom: u * 4, zIndex: 6, visibility: "hidden" });
+
   return (
-    <div ref={ref} style={root} data-sign>
+    <div ref={rootRef} style={root} data-sign data-overlap={pos.overlap ? "1" : undefined}>
       {bgImg}{tint}
       {content}
       {frame}
-      {(cfg.qr?.trim() || cfg.braille) && (
-        <div style={{ position: "absolute", right: u * 4, bottom: H * 0.15, display: "flex", alignItems: "flex-end", gap: u * 2, zIndex: 6 }}>
-          {cfg.braille && cfg.range && <div style={{ background: "#fff", color: "#111", borderRadius: u, padding: `${u}px ${u * 2}px`, fontSize: u * 4, lineHeight: 1.1, fontFamily: "system-ui, sans-serif", maxWidth: W * 0.5 }} title="Braille reference">{toBraille(cfg.range)}</div>}
-          {cfg.qr?.trim() && <Qr text={cfg.qr.trim()} size={Math.max(u * 14, 0.9 * CSS_PX_PER_IN)} />}
-        </div>
-      )}
+      {showBr && <div ref={brRef} style={{ ...at(pos.br), background: "#fff", color: "#111", borderRadius: u, padding: `${u}px ${u * 2}px`, fontSize: u * 4, lineHeight: 1.1, fontFamily: "system-ui, sans-serif", maxWidth: W * 0.5, overflowWrap: "anywhere", wordBreak: "break-all" }} title="Braille reference">{toBraille(cfg.range)}</div>}
+      {qrText && <div ref={qrRef} style={at(pos.qr)}><Qr text={qrText} size={Math.max(u * 14, 0.9 * CSS_PX_PER_IN)} /></div>}
     </div>
   );
 });

@@ -57,3 +57,26 @@ describe("print helpers", () => {
   it("neon green is flagged for CMYK, navy is not", () => { expect(cmykRisk("#00FF00")).toBe(true); expect(cmykRisk("#1B2A4A")).toBe(false); });
   it("Spanish label translates, unknown falls back", () => { expect(translate("es", "Print")).toBe("Imprimir"); expect(translate("fr", "Zzz")).toBe("Zzz"); });
 });
+
+import { placeOverlays } from "./placement";
+import { backgroundDpi, pageSizeIssues } from "./preflight";
+
+describe("overlay placement", () => {
+  it("QR avoids text in the bottom-right corner", () => {
+    const [q] = placeOverlays(1000, 1000, 10, 5, [{ x: 600, y: 800, w: 390, h: 190 }], [{ w: 100, h: 100 }]);
+    expect(q?.overlap).toBe(false);
+    expect(q!.y + 100 <= 795 || q!.x + 100 <= 595).toBe(true);
+  });
+  it("QR and braille never overlap each other", () => {
+    const [a, b] = placeOverlays(1000, 1000, 10, 5, [], [{ w: 100, h: 100 }, { w: 200, h: 50 }]);
+    const hit = a!.x < b!.x + b!.w && b!.x < a!.x + a!.w && a!.y < b!.y + b!.h && b!.y < a!.y + a!.h;
+    expect(hit).toBe(false);
+  });
+  it("flags overlap when the sign has no free space", () => expect(placeOverlays(200, 200, 0, 0, [{ x: 0, y: 0, w: 200, h: 200 }], [{ w: 50, h: 50 }])[0]?.overlap).toBe(true));
+});
+
+describe("preflight rules", () => {
+  it("a 1200x1800 photo covering a 12x18 sign prints at 100 DPI", () => expect(backgroundDpi(1200, 1800, { width: 12, height: 18, imageFit: "cover" })).toBe(100));
+  it("flags a Tabloid preset with 12x18 dimensions", () => expect(pageSizeIssues({ sizePreset: "tabloid", width: 12, height: 18 }).some((i) => i.level === "error")).toBe(true));
+  it("accepts a landscape end-panel", () => expect(pageSizeIssues({ sizePreset: "end-panel", width: 18, height: 12 })).toEqual([]));
+});

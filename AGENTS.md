@@ -34,3 +34,5 @@ use the editor.
 - Signs render in CSS inches (96px/in) via `SignRenderer`; exports scale with `exportPixelRatio` for 300 DPI so preview and output match.
 - Sign sizes are stored in inches internally; centimeters are converted only at the UI edge (`toUnit`/`fromUnit` in size.ts) so exports stay exact.
 - Studio itself stays client-side; only optional branch sharing uses Lovable Cloud (libraries, library_members, shared_signs with member-scoped RLS; create/join via security-definer RPCs) so the app keeps working signed-out.
+- AI sign-wording runs server-side in src/lib/ai (createServerFn + requireSupabaseAuth) so gateway credits are only spent by signed-in staff.
+- QR/braille overlays are placed by measuring [data-txt] text rects in SignRenderer and calling placeOverlays; mark any new sign text with data-txt so placement and preflight see it.

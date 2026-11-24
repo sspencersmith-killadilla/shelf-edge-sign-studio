@@ -11,6 +11,9 @@ import { loadBrand, loadSaved, persistSaved } from "@/lib/signage/storage";
 import { Undo2, Redo2, Languages, X } from "lucide-react";
 import { LANGS, LangContext, translate, type Lang } from "@/lib/signage/i18n";
 import { SignRenderer } from "./SignRenderer";
+import { runPreflight, type Issue } from "@/lib/signage/preflight";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ClipboardCheck, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
@@ -166,6 +169,15 @@ export function Studio() {
     window.print();
   };
 
+  const [pf, setPf] = useState<{ issues: Issue[]; run?: () => void } | null>(null);
+  const check = async (run?: () => void) => {
+    const node = signRef.current; if (!node) return run?.();
+    const issues = await runPreflight(node, cfg).catch((e) => { console.error(e); return [] as Issue[]; });
+    if (!issues.length && run) return run();
+    setPf(run ? { issues, run } : { issues });
+  };
+  const guard = (f: () => void) => () => void check(f);
+
   const zooms: [string, () => void][] = [["Fit", fit], ["50%", () => zoomTo(0.5)], ["75%", () => zoomTo(0.75)], ["100%", () => zoomTo(1)]];
   const g = 0.25 * CSS_PX_PER_IN, b = 0.125 * CSS_PX_PER_IN;
 
@@ -191,13 +203,14 @@ export function Studio() {
           <label className="flex items-center gap-2 text-xs font-medium"><Switch checked={guides} onCheckedChange={setGuides} /> <ScanLine className="size-3.5" /> {t("Guides")}</label>
           <label className="flex items-center gap-1 text-xs"><Languages className="size-3.5" /><select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="rounded border border-border bg-card px-1 py-0.5">{LANGS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}</select></label>
           <div className="ml-auto flex gap-2">
-            <Button variant="outline" size="sm" onClick={print}><Printer /> <span className="hidden lg:inline">{t("Print")}</span></Button>
-            <Button variant="outline" size="sm" onClick={exportPdf} disabled={!!busy}><FileText /> {busy === "pdf" ? "Exporting…" : <span className="hidden lg:inline">{t("Export PDF")}</span>}</Button>
-            <Button size="sm" onClick={exportPng} disabled={!!busy}><Download /> {busy === "png" ? "Exporting…" : t("Export PNG (300 DPI)")}</Button>
+            <Button variant="ghost" size="sm" onClick={() => void check()}><ClipboardCheck /> <span className="hidden lg:inline">Preflight</span></Button>
+            <Button variant="outline" size="sm" onClick={guard(print)}><Printer /> <span className="hidden lg:inline">{t("Print")}</span></Button>
+            <Button variant="outline" size="sm" onClick={guard(() => void exportPdf())} disabled={!!busy}><FileText /> {busy === "pdf" ? "Exporting…" : <span className="hidden lg:inline">{t("Export PDF")}</span>}</Button>
+            <Button size="sm" onClick={guard(() => void exportPng())} disabled={!!busy}><Download /> {busy === "png" ? "Exporting…" : t("Export PNG (300 DPI)")}</Button>
           </div>
         </header>
         <div className="relative flex min-h-0 flex-1">
-          {open && <aside className="absolute inset-y-0 left-0 z-20 w-[min(380px,90vw)] shrink-0 border-r border-border bg-sidebar shadow-lg md:static md:shadow-none"><Sidebar unit={unit} setUnit={setUnit} exportAll={() => void exportAll()} shopPdf={() => void shopPdf()} duplexPdf={() => void duplexPdf()} cfg={cfg} set={set} replace={setCfg} saved={saved} setSaved={setSaved} /></aside>}
+          {open && <aside className="absolute inset-y-0 left-0 z-20 w-[min(380px,90vw)] shrink-0 border-r border-border bg-sidebar shadow-lg md:static md:shadow-none"><Sidebar unit={unit} setUnit={setUnit} exportAll={() => void exportAll()} shopPdf={guard(() => void shopPdf())} duplexPdf={guard(() => void duplexPdf())} cfg={cfg} set={set} replace={setCfg} saved={saved} setSaved={setSaved} /></aside>}
           <main ref={viewRef} className="canvas-backdrop relative min-w-0 flex-1 cursor-grab overflow-hidden active:cursor-grabbing"
             style={{ touchAction: "none" }}
             onPointerDown={(e) => { pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY }); drag.current = { x: e.clientX - offset.x, y: e.clientY - offset.y }; (e.target as Element).setPointerCapture?.(e.pointerId); }}
@@ -226,6 +239,27 @@ export function Studio() {
         </div>
       </div>
       <div className="print-only"><SignRenderer cfg={cfg} /></div>
+      <Dialog open={!!pf} onOpenChange={(o) => !o && setPf(null)}>
+        <DialogContent className="no-print max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Print preflight</DialogTitle>
+            <DialogDescription>{pf?.issues.length ? `${pf.issues.length} thing${pf.issues.length === 1 ? "" : "s"} to check before printing.` : "No problems found. This sign is ready to print."}</DialogDescription>
+          </DialogHeader>
+          <ul className="max-h-80 space-y-2 overflow-y-auto">
+            {pf?.issues.map((i, n) => (
+              <li key={n} className="flex gap-2 rounded-md border border-border p-2 text-sm">
+                <AlertTriangle className={`mt-0.5 size-4 shrink-0 ${i.level === "error" ? "text-destructive" : "text-muted-foreground"}`} />
+                <div><div className="font-medium">{i.title}</div><div className="text-xs text-muted-foreground">{i.detail}</div></div>
+              </li>
+            ))}
+            {pf && !pf.issues.length && <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="size-4 text-primary" /> Text, fonts, photo and page size all look good.</li>}
+          </ul>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPf(null)}>{pf?.run ? "Cancel" : "Close"}</Button>
+            {pf?.run && <Button onClick={() => { const r = pf.run; setPf(null); r?.(); }}>Export anyway</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {tour !== null && (
         <div role="dialog" aria-label="Welcome tour" className="no-print fixed bottom-6 right-6 z-50 w-80 rounded-lg border border-border bg-card p-4 shadow-lg">
           <button aria-label="Close tour" onClick={endTour} className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
