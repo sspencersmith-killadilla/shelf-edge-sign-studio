@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { LovableMark } from "@lovable.dev/cloud-auth-js/react";
 import { Library } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -31,14 +30,14 @@ function AuthPage() {
     try {
       if (mode === "up") {
         const { error } = await supabase.auth.signUp({ email, password: pw, options: { emailRedirectTo: window.location.origin } });
-        if (error) throw error; toast.success("Check your email to confirm your account.");
+        if (error) throw error; toast.success("Account created. You're signed in."); nav({ to: "/" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
         if (error) throw error; nav({ to: "/" });
       }
     } catch (err) { toast.error(err instanceof Error ? err.message : "Sign in failed"); } finally { setBusy(false); }
   };
-  const social = async (p: "google" | "lovable") => {
+  const social = async (p: "google") => {
     const r = await lovable.auth.signInWithOAuth(p, { redirect_uri: window.location.origin });
     if (r.error) { toast.error("Sign in failed"); return; }
     if (r.redirected) return;
@@ -51,7 +50,6 @@ function AuthPage() {
         <div><h1 className="font-display text-xl font-bold">{mode === "in" ? "Sign in" : "Create an account"}</h1><p className="text-sm text-muted-foreground">Share sign designs with every branch in your library system.</p></div>
         <div className="grid gap-2">
           <Button type="button" variant="outline" className="border-[#747775] bg-[#FFFFFF] text-[#1F1F1F] hover:bg-[#F2F2F2]" onClick={() => void social("google")}>{G} Continue with Google</Button>
-          <Button type="button" variant="outline" onClick={() => void social("lovable")}><LovableMark /> Continue with Lovable</Button>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
         <form onSubmit={submit} className="space-y-3">
