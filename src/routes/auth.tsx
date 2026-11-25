@@ -29,8 +29,9 @@ function AuthPage() {
     e.preventDefault(); setBusy(true);
     try {
       if (mode === "up") {
-        const { error } = await supabase.auth.signUp({ email, password: pw, options: { emailRedirectTo: window.location.origin } });
-        if (error) throw error; toast.success("Account created. You're signed in."); nav({ to: "/" });
+        const { data, error } = await supabase.auth.signUp({ email, password: pw, options: { emailRedirectTo: window.location.origin } });
+        if (error) throw error;
+        if (!data.session) { const r = await supabase.auth.signInWithPassword({ email, password: pw }); if (r.error) throw r.error; } toast.success("Account created. You're signed in."); nav({ to: "/" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
         if (error) throw error; nav({ to: "/" });
