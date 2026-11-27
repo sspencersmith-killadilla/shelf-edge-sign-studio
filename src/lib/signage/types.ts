@@ -45,6 +45,8 @@ export interface SignConfig {
   dir?: "ltr" | "rtl";
   qr?: string;
   braille?: boolean;
+  layout?: import("./layout").Layout;
+  grid?: number;
 }
 
 export interface SavedSign { id: string; name: string; savedAt: number; config: SignConfig }

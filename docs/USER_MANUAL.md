@@ -57,3 +57,9 @@
 
 ## 10. Privacy
 - No patron data is collected. Signs stay in your browser unless you choose to share them with your library.
+
+## Moving, resizing and curving elements
+Click any text, icon or arrow on the sign and drag it. Positions snap to the grid chosen in the **Snap grid** box (1/8" to 1", or Off). With an element selected you can change its size, nudge it with the arrow buttons, or use **Curve** to bend text along a round arc (positive arches up, negative curves down). **Reset this element** or **Reset all positions** puts things back.
+
+## Matching colors to a photo
+When you upload a background photo on the Style tab, the sign colors are picked from the photo automatically (untick "Match sign colors to uploaded photo" to keep your colors). **Match colors to this photo** re-applies it any time. Text colors are checked for readable contrast.

@@ -6,6 +6,7 @@ import { fontStack } from "@/lib/signage/fonts";
 import qrcode from "qrcode-generator";
 import { toBraille } from "@/lib/signage/print";
 import { CSS_PX_PER_IN } from "@/lib/signage/size";
+import { arcGeometry } from "@/lib/signage/layout";
 
 export const ICON_MAP: Record<string, LucideIcon> = { BookOpen, Library, Compass, Search, Star, Clock, BookMarked, Users, Sparkles, Landmark, TreePine, Map };
 const ARROWS: Record<string, LucideIcon> = { left: ArrowLeft, right: ArrowRight, up: ArrowUp, down: ArrowDown, both: ArrowLeftRight };
@@ -41,7 +42,12 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
     <div style={{ position: "absolute", inset: u * 2, border: `${frameW}px solid ${p.accent}`, outline: cfg.frame === "double" ? `${u * 0.6}px solid ${p.accent}` : undefined, outlineOffset: u * 1.2, pointerEvents: "none", zIndex: 5 }} />
   ) : null;
 
-  const T = (s: CSSProperties, c: ReactNode, n?: string) => <div style={s} data-txt={n}>{c}</div>;
+  const tf = (n: string): CSSProperties => { const l = cfg.layout?.[n]; return l ? { transform: `translate(${l.x * CSS_PX_PER_IN}px, ${l.y * CSS_PX_PER_IN}px) scale(${l.s ?? 1})`, position: "relative", zIndex: 4 } : {}; };
+  const T = (s: CSSProperties, c: ReactNode, n?: string) => {
+    const curve = n ? cfg.layout?.[n]?.curve : 0;
+    if (n && curve && typeof c === "string") return <div style={{ ...tf(n), display: "flex", justifyContent: "center" }} data-part={n} data-txt={n}><CurvedText text={c} style={s} deg={curve} /></div>;
+    return <div style={{ ...s, ...(n ? tf(n) : {}) }} data-txt={n} data-part={n}>{c}</div>;
+  };
   const header = cfg.showHeader && cfg.header ? T({ fontFamily: head, fontWeight: 700, letterSpacing: "0.14em", fontSize: bodySize * 0.8, textTransform: "uppercase" }, cfg.header, "header") : null;
   const titleEl = T({ fontFamily: head, fontWeight: 800, fontSize: titleSize, lineHeight: 1.02, letterSpacing: "-0.01em", textAlign: ta }, cfg.title, "title");
   const rangeEl = T({ fontFamily: body, fontWeight: 800, fontSize: rangeSize, lineHeight: 1, letterSpacing: "-0.02em", textAlign: ta, whiteSpace: "pre-wrap" }, cfg.range, "range");
@@ -49,8 +55,8 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
   const zoneEl = cfg.showZone && cfg.zone ? T({ fontSize: bodySize * 0.85, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase" }, cfg.zone, "zone") : null;
   const aisleEl = cfg.showAisle && cfg.aisle ? cfg.aisle : null;
   const footerEl = cfg.footer ? T({ fontSize: bodySize * 0.8, opacity: 0.85, textAlign: ta }, cfg.footer, "footer") : null;
-  const arrowEl = (size: number, color: string) => (ArrowI ? <ArrowI size={size} color={color} strokeWidth={2.4} /> : null);
-  const iconEl = (size: number, color: string) => (cfg.showIcon ? <Icon size={size} color={color} strokeWidth={1.8} /> : null);
+  const arrowEl = (size: number, color: string) => (ArrowI ? <div data-part="arrow" style={{ display: "flex", ...tf("arrow") }}><ArrowI size={size} color={color} strokeWidth={2.4} /></div> : null);
+  const iconEl = (size: number, color: string) => (cfg.showIcon ? <div data-part="icon" style={{ display: "flex", ...tf("icon") }}><Icon size={size} color={color} strokeWidth={1.8} /></div> : null);
   const col = (gap: number): CSSProperties => ({ display: "flex", flexDirection: "column", alignItems: items, gap, textAlign: ta });
 
   let content: ReactNode;
@@ -97,7 +103,7 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
         <div style={{ position: "absolute", inset: 0, display: "flex" }}>
           <div style={{ width: bar, background: p.primary, color: p.background, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: `${pad}px ${u * 2}px` }}>
             {iconEl(bar * 0.4, p.accent)}
-            {aisleEl && <div style={{ textAlign: "center", fontFamily: head }} data-txt="aisle">
+            {aisleEl && <div style={{ textAlign: "center", fontFamily: head, ...tf("aisle") }} data-txt="aisle" data-part="aisle">
               <div style={{ fontSize: bar * 0.11, letterSpacing: "0.2em", fontWeight: 600 }}>{aisleEl.replace(/[\d\s]+$/, "") || "AISLE"}</div>
               <div style={{ fontSize: bar * 0.55, fontWeight: 800, lineHeight: 1, color: p.accent }}>{aisleEl.match(/\d+/)?.[0] ?? aisleEl}</div>
             </div>}
@@ -130,7 +136,7 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
             <div style={{ background: p.primary, color: p.background, borderRadius: u * 6, padding: `${u * 3}px ${u * 6}px`, boxShadow: `0 ${u}px 0 ${p.accent}` }}>{rangeEl}</div>
             {subEl}
             <div style={{ display: "flex", gap: u * 3, alignItems: "center" }}>
-              {aisleEl && <div style={{ border: `${u * 0.6}px solid ${p.primary}`, borderRadius: 999, padding: `${u}px ${u * 4}px`, fontWeight: 700, fontSize: bodySize, fontFamily: head, color: p.primary }}>{aisleEl}</div>}
+              {aisleEl && <div data-txt="aisle" data-part="aisle" style={{ ...tf("aisle"), border: `${u * 0.6}px solid ${p.primary}`, borderRadius: 999, padding: `${u}px ${u * 4}px`, fontWeight: 700, fontSize: bodySize, fontFamily: head, color: p.primary }}>{aisleEl}</div>}
               {arrowEl(rangeSize * 0.7, p.primary)}
             </div>
             {zoneEl}{footerEl}
@@ -188,6 +194,23 @@ export const SignRenderer = forwardRef<HTMLDivElement, { cfg: SignConfig }>(func
     </div>
   );
 });
+
+function CurvedText({ text, style, deg }: { text: string; style: CSSProperties; deg: number }) {
+  const fs = Number(style.fontSize) || 16;
+  const line = text.replace(/\s*\n\s*/g, "  ·  ");
+  const ls = typeof style.letterSpacing === "string" && style.letterSpacing.endsWith("em") ? parseFloat(style.letterSpacing) * fs : 0;
+  const width = line.length * (fs * 0.6 + ls);
+  const g = arcGeometry(width, fs, deg);
+  const id = "arc-" + Math.abs(Math.round(deg * 1000 + line.length * 7 + fs));
+  return (
+    <svg width={g.w} height={g.h} style={{ overflow: "visible", display: "block" }}>
+      <path id={id} d={g.d} fill="none" />
+      <text fill="currentColor" style={{ fontFamily: style.fontFamily, fontWeight: style.fontWeight, fontSize: fs, letterSpacing: style.letterSpacing, fontStyle: style.fontStyle, textTransform: style.textTransform, opacity: style.opacity } as CSSProperties} textAnchor="middle">
+        <textPath href={`#${id}`} startOffset="50%">{line}</textPath>
+      </text>
+    </svg>
+  );
+}
 
 function Qr({ text, size }: { text: string; size: number }) {
   const q = qrcode(0, "M"); q.addData(text); q.make();

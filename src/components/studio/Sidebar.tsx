@@ -16,6 +16,8 @@ import { signsFromCsv } from "@/lib/signage/csv";
 import { fromUnit, toUnit, fmtSize, type Unit } from "@/lib/signage/size";
 import { AlertTriangle, FileStack, Scissors, Columns2, ShieldCheck } from "lucide-react";
 import { useT } from "@/lib/signage/i18n";
+import { paletteFromImage } from "@/lib/signage/photoPalette";
+import { Palette as PaletteIcon } from "lucide-react";
 import { cmykRisk, readableDistanceFt } from "@/lib/signage/print";
 import { CSS_PX_PER_IN } from "@/lib/signage/size";
 import { ICON_MAP, SignRenderer } from "./SignRenderer";
@@ -91,11 +93,16 @@ function StyleTab({ cfg, set }: Pick<Props, "cfg" | "set">) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const p = cfg.palette;
+  const [autoMatch, setAutoMatch] = useState(true);
+  const matchPhoto = async (src: string) => {
+    try { const pal = await paletteFromImage(src); set({ image: src, palette: pal, tint: pal.primary }); toast.success("Colors matched to your photo"); }
+    catch { toast.error("Couldn't read colors from that photo"); }
+  };
   const readFile = (f?: File) => {
     if (!f) return;
     if (!/image\/(png|jpe?g|webp)/.test(f.type)) { toast.error("Please use a PNG, JPG or WebP image"); return; }
     const r = new FileReader();
-    r.onload = () => set({ image: String(r.result) });
+    r.onload = () => { const src = String(r.result); set({ image: src }); if (autoMatch) void matchPhoto(src); };
     r.readAsDataURL(f);
   };
   const fontSel = (label: string, key: "headingFont" | "bodyFont") => (
@@ -148,7 +155,9 @@ function StyleTab({ cfg, set }: Pick<Props, "cfg" | "set">) {
         <span className="text-muted-foreground">Drop a PNG, JPG or WebP, or click to choose</span>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => readFile(e.target.files?.[0])} />
       </div>
+      <label className="flex items-center gap-2 pt-1 text-xs"><input type="checkbox" checked={autoMatch} onChange={(e) => setAutoMatch(e.target.checked)} />Match sign colors to uploaded photo</label>
       {cfg.image && (<div className="space-y-4 pt-2">
+        <Button variant="outline" size="sm" className="w-full" onClick={() => void matchPhoto(cfg.image!)}><PaletteIcon /> Match colors to this photo</Button>
         <Button variant="outline" size="sm" className="w-full" onClick={() => set({ image: null })}><Trash2 /> Remove image</Button>
         <Seg value={cfg.imageFit} options={[{ v: "cover", l: "Cover" }, { v: "contain", l: "Contain" }, { v: "tile", l: "Tile" }]} onChange={(v) => set({ imageFit: v })} />
         <Seg value={cfg.focal} options={(["center", "top", "bottom", "left", "right"] as const).map((v) => ({ v, l: v[0]!.toUpperCase() + v.slice(1) }))} onChange={(v) => set({ focal: v })} />
